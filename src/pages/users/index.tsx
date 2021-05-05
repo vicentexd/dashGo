@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 import {
   Box,
   Button,
@@ -5,6 +6,7 @@ import {
   Flex,
   Heading,
   Icon,
+  Spinner,
   Table,
   Tbody,
   Td,
@@ -14,17 +16,43 @@ import {
   Tr,
   useBreakpointValue,
 } from '@chakra-ui/react';
-import { RiAddLine } from 'react-icons/ri';
 import Link from 'next/link';
+import { RiAddLine } from 'react-icons/ri';
+import { useQuery } from 'react-query';
 import { Header } from '../../components/Header';
 import { Pagination } from '../../components/Pagination';
 import { Sidebar } from '../../components/SideBar';
 
 export default function UserList() {
+  const { data, isLoading, error } = useQuery(
+    'users',
+    async () => {
+      const respose = await fetch('http://localhost:3000/api/users');
+      const responseData = await respose.json();
+
+      const users = responseData.users.map(user => {
+        return {
+          ...user,
+          createdAt: new Date(user.createdAt).toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
+          }),
+        };
+      });
+
+      return users;
+    },
+    {
+      staleTime: 1000 * 5, // 5 segundos
+    },
+  );
+
   const isWideVersion = useBreakpointValue({
     base: false,
     lg: true,
   });
+
   return (
     <Box>
       <Header />
@@ -51,36 +79,50 @@ export default function UserList() {
             </Link>
           </Flex>
 
-          <Table colorScheme="whiteAlpha">
-            <Thead>
-              <Tr>
-                <Th px={['4', '4', '6']} color="gray.300" w="8">
-                  <Checkbox colorScheme="pink" />
-                </Th>
-                <Th>Usuário</Th>
-                {isWideVersion && <Th>Data de cadastro</Th>}
-                <Th w="8" />
-              </Tr>
-            </Thead>
-            <Tbody>
-              <Tr>
-                <Td px={['4', '4', '6']}>
-                  <Checkbox colorScheme="pink" />
-                </Td>
-                <Td>
-                  <Box>
-                    <Text fontWeight="bold">Vicente o Lindo</Text>
-                    <Text fontSize="sm" color="gray.300">
-                      vivlindo@gmail.com
-                    </Text>
-                  </Box>
-                </Td>
-                {isWideVersion && <Td>28 de Abril, 2021</Td>}
-              </Tr>
-            </Tbody>
-          </Table>
+          {isLoading ? (
+            <Flex justify="center">
+              <Spinner />
+            </Flex>
+          ) : error ? (
+            <Flex justify="center">
+              <Text>Erro ao obter dados dos usuários</Text>
+            </Flex>
+          ) : (
+            <>
+              <Table colorScheme="whiteAlpha">
+                <Thead>
+                  <Tr>
+                    <Th px={['4', '4', '6']} color="gray.300" w="8">
+                      <Checkbox colorScheme="pink" />
+                    </Th>
+                    <Th>Usuário</Th>
+                    {isWideVersion && <Th>Data de cadastro</Th>}
+                    <Th w="8" />
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {data.map(user => (
+                    <Tr key={user.id}>
+                      <Td px={['4', '4', '6']}>
+                        <Checkbox colorScheme="pink" />
+                      </Td>
+                      <Td>
+                        <Box>
+                          <Text fontWeight="bold">{user.name}</Text>
+                          <Text fontSize="sm" color="gray.300">
+                            {user.email}
+                          </Text>
+                        </Box>
+                      </Td>
+                      {isWideVersion && <Td>{user.createdAt}</Td>}
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
 
-          <Pagination />
+              <Pagination />
+            </>
+          )}
         </Box>
       </Flex>
     </Box>
